@@ -97,7 +97,14 @@ class TootrisGame(arcade.View):
         pass
 
     def on_key_press(self, key, modifiers):
-        pass
+        if key == arcade.key.A or key == arcade.key.LEFT:
+            print("Left")
+        elif key == arcade.key.D or key == arcade.key.RIGHT:
+            print("Right")
+        elif key == arcade.key.S or key == arcade.key.DOWN:
+            print("Down")
+        elif key == arcade.key.W or key == arcade.key.UP:
+            print("Rotate")
 
     def on_mouse_motion(self, x, y, dx, dy):
         pass
