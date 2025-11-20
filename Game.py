@@ -1,5 +1,7 @@
 import arcade
 
+import SquareControl
+
 WINDOW_WIDTH = 650
 WINDOW_HEIGHT = 900
 WINDOW_TITLE = "Tootris"
@@ -12,11 +14,14 @@ grid = {
     "top_offset": 50,
     "left_offset": 50,
 }
-
+# Spawn at column 4, row 0 (top-center)
+SpawnPos = (4, 0)
+square_pos = []
 class TootrisGame(arcade.View):
     def __init__(self):
         super().__init__()
         self.background_color = arcade.color.BLACK
+        self.active_piece_grid_pos = None
 
     def get_grid_dimensions(self):
         cs = grid["cell_size"]
@@ -33,12 +38,16 @@ class TootrisGame(arcade.View):
         m = grid["margin"]
         left = grid["left_offset"]
         top_gap = grid["top_offset"]
+        rows = grid["rows"]
 
-        inner_left = left + m
-        inner_top = WINDOW_HEIGHT - top_gap - m
+        _, total_h = self.get_grid_dimensions()
+        board_bottom = WINDOW_HEIGHT - top_gap - total_h
 
-        x = inner_left + col * (cs + m) + cs / 2
-        y = inner_top - row * (cs + m) - cs / 2
+        cell_left = left + m + col * (cs + m)
+        cell_bottom = board_bottom + m + (rows - 1 - row) * (cs + m)
+
+        x = cell_left + cs / 2
+        y = cell_bottom + cs / 2
 
         return x, y
 
@@ -73,8 +82,9 @@ class TootrisGame(arcade.View):
         cell_width = (inner_width - (cols - 1) * m) / cols
         cell_height = (inner_height - (rows - 1) * m) / rows
 
-        for row in range(rows):
-            for col in range(cols):
+        for col in range(cols):
+            for row in range(rows):
+
                 left = board_left + m + col * (cell_width + m)
                 bottom = board_bottom + m + (rows - 1 - row) * (cell_height + m)
 
@@ -86,12 +96,26 @@ class TootrisGame(arcade.View):
                     arcade.color.LIGHT_GRAY
                 )
 
+
+    def draw_square(self):
+        if self.active_piece_grid_pos:
+            col, row = self.active_piece_grid_pos
+            center_x, center_y = self.get_cell_center(col, row)
+
+            arcade.draw_lbwh_rectangle_filled(
+                center_x,
+                center_y,
+                grid["cell_size"],
+                grid["cell_size"],
+                arcade.color.RED
+            )
     def reset(self):
         pass
 
     def on_draw(self):
         self.clear()
         self.draw_grid()
+        self.draw_square()
 
     def on_update(self, delta_time):
         pass
@@ -105,6 +129,8 @@ class TootrisGame(arcade.View):
             print("Down")
         elif key == arcade.key.W or key == arcade.key.UP:
             print("Rotate")
+        elif key == arcade.key.P:
+            self.active_piece_grid_pos = SpawnPos
 
     def on_mouse_motion(self, x, y, dx, dy):
         pass
