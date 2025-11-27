@@ -2,7 +2,7 @@ import random
 
 import arcade
 
-
+import Logic
 WINDOW_WIDTH = 650
 WINDOW_HEIGHT = 900
 WINDOW_TITLE = "Tootris"
@@ -186,10 +186,15 @@ class TootrisGame(arcade.View):
         if self.active_piece_grid_pos:
             col, row = self.active_piece_grid_pos
             if row < grid["rows"] - 1:
+                if (col, row + 1) in self.inactive_pieces:
+                    self.inactive_pieces.append((col, row))
+                    self.active_piece_grid_pos = None
+                    return
                 self.active_piece_grid_pos = (col, row + 1)
                 print("Move Down to:", self.active_piece_grid_pos)
             else:
                 self.inactive_pieces.append((col, row))
+                self.inactive_pieces = Logic.check_full_rows(self.inactive_pieces, grid["rows"], grid["columns"])
                 self.active_piece_grid_pos = None
                 print("Piece Locked at:", (col, row))
     def move_right(self):
