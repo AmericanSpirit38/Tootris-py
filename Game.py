@@ -182,6 +182,9 @@ class TootrisGame(arcade.View):
             col = random.randrange(grid["columns"])
             self.active_piece_grid_pos = (col, 0)
             print("Spawn Piece at:", self.active_piece_grid_pos)
+        elif key == arcade.key.SPACE:
+            self.drop()
+
     def move_down(self):
         if self.active_piece_grid_pos:
             col, row = self.active_piece_grid_pos
@@ -209,6 +212,9 @@ class TootrisGame(arcade.View):
             if col > 0:
                 self.active_piece_grid_pos = (col - 1, row)
                 print("Move Left to:", self.active_piece_grid_pos)
+    def drop(self):
+        while self.active_piece_grid_pos:
+            self.move_down()
     def on_mouse_motion(self, x, y, dx, dy):
         pass
 
