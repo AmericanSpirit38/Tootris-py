@@ -1,4 +1,5 @@
 import random
+from pyglet.graphics import Batch
 # Import the arcade library for game development
 import arcade
 # Import a script that handles game logic
@@ -52,6 +53,9 @@ class TootrisGame(arcade.View):
         self._second_acc = 0.0
 
         self.score = 0
+
+        self.score_top_left_pos = (WINDOW_WIDTH - 620, WINDOW_HEIGHT - 40)
+
 
     def setup_grid_pos(self):
         self.grid_pos = []
@@ -172,13 +176,13 @@ class TootrisGame(arcade.View):
         Draw the current score on the screen.
         """
         score_text = f"Score: {self.score}"
-        arcade.draw_text(
-            score_text,
-            10,
-            WINDOW_HEIGHT - 30,
-            arcade.color.WHITE,
-            16
-        )
+        top_left_x, top_left_y = self.score_top_left_pos
+        batch = Batch()
+        text_1 = arcade.Text(score_text, top_left_x, top_left_y, batch=batch)
+        # Draw the batch
+        batch.draw()
+        # Remove a text instance from the batch
+        text_1.batch = None
     def reset(self):
         pass
 
@@ -223,7 +227,6 @@ class TootrisGame(arcade.View):
         # Handle input to hard drop piece
         elif key == arcade.key.SPACE:
             self.drop()
-
     def spawn(self, kind=None):
         """
         Spawn a multi-cell piece from block_presets at the top, centered horizontally.
@@ -273,23 +276,6 @@ class TootrisGame(arcade.View):
         """
         self.active_piece_grid_pos = [[c + dcol, r + drow] for c, r in self.active_piece_grid_pos]
 
-    def move_down(self):
-        """
-        Move active piece down; if blocked, lock into inactive and clear full rows.
-        """
-        if not self.active_piece_grid_pos:
-            return
-        if self._can_move(0, 1):
-            self._apply_move(0, 1)
-            print("Move Down to:", self.active_piece_grid_pos)
-        else:
-            # Lock piece
-            for c, r in self.active_piece_grid_pos:
-                self.inactive_pieces.append((c, r))
-            # Clear full rows
-            self.inactive_pieces = Logic.check_full_rows(self.inactive_pieces, grid["rows"], grid["columns"])
-            self.active_piece_grid_pos = []
-            print("Piece Locked.")
 
     def move_right(self):
         # Move active piece right if possible
@@ -307,6 +293,29 @@ class TootrisGame(arcade.View):
             self._apply_move(-1, 0)
             print("Move Left to:", self.active_piece_grid_pos)
 
+    def move_down(self):
+        """
+        Move active piece down; if blocked, lock into inactive and clear full rows.
+        """
+        if not self.active_piece_grid_pos:
+            return
+        if self._can_move(0, 1):
+            self._apply_move(0, 1)
+            print("Move Down to:", self.active_piece_grid_pos)
+        else:
+            # Lock piece
+            for c, r in self.active_piece_grid_pos:
+                self.inactive_pieces.append((c, r))
+            # Clear full rows and update score
+            self.inactive_pieces, lines = Logic.check_full_rows(
+                self.inactive_pieces, grid["rows"], grid["columns"]
+            )
+            self.score += Logic.SetScore(lines)
+            print("Piece Locked.")
+            # Spawn next piece
+            self.active_piece_grid_pos = []
+            self.spawn()
+
     def drop(self):
         """
         Hard drop: move down until blocked, then lock.
@@ -318,8 +327,13 @@ class TootrisGame(arcade.View):
         # Lock after drop
         for c, r in self.active_piece_grid_pos:
             self.inactive_pieces.append((c, r))
-        self.inactive_pieces = Logic.check_full_rows(self.inactive_pieces, grid["rows"], grid["columns"])
+        self.inactive_pieces, lines = Logic.check_full_rows(
+            self.inactive_pieces, grid["rows"], grid["columns"]
+        )
+        self.score += Logic.SetScore(lines)
+        # Spawn next piece
         self.active_piece_grid_pos = []
+        self.spawn()
 
     def on_mouse_motion(self, x, y, dx, dy):
         pass
