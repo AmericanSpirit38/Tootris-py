@@ -22,7 +22,7 @@ grid = {
 
 # Block presets defined as local offsets (col_offset, row_offset) from an origin
 block_presets = {
-    "I": [(0, 0), (0, 1), (0, 2), (0, 3)],
+    "I": [(0, 0), (-1, 0), (-2, 0), (1, 0)],
     "O": [(0, 0), (1, 0), (0, 1), (1, 1)],
     "T": [(0, 0), (1, 0), (2, 0), (1, 1)],
     "S": [(1, 0), (2, 0), (0, 1), (1, 1)],
@@ -55,6 +55,9 @@ class TootrisGame(arcade.View):
         self.score = 0
 
         self.score_top_left_pos = (WINDOW_WIDTH - 620, WINDOW_HEIGHT - 40)
+
+        self.game_over = False
+        self.game_started = False
 
 
     def setup_grid_pos(self):
@@ -194,6 +197,13 @@ class TootrisGame(arcade.View):
         self.draw_score()
 
     def on_update(self, delta_time):
+        # Check Game Over condition
+        if self.game_started:
+            if self._check_game_over():
+                self.game_over = True
+                print("Game Over!")
+                game_over()
+                return
         # Update time tracking and move piece down every second, not if manually moved down.
         self._second_acc += delta_time
         while self._second_acc >= 1.0:
@@ -218,12 +228,10 @@ class TootrisGame(arcade.View):
         # Handle input to rotate piece Right (not implemented)
         elif key == arcade.key.E:
             print("Rotate Right")
-        # Handle input to spawn a random piece (testing only) to be implemented automatically
+        # Start the game on P key press
         elif key == arcade.key.P:
-            # Randomly spawn a preset piece
-            kind = random.choice(list(block_presets.keys()))
-            self.spawn(kind)
-            print("Spawn Piece:", kind, "at", self.active_piece_grid_pos)
+            self.game_started = True
+            self.spawn()
         # Handle input to hard drop piece
         elif key == arcade.key.SPACE:
             self.drop()
@@ -231,6 +239,8 @@ class TootrisGame(arcade.View):
         """
         Spawn a multi-cell piece from block_presets at the top, centered horizontally.
         """
+        if self.game_over:
+            return
         if kind is None:
             kind = random.choice(list(block_presets.keys()))
         offsets = block_presets.get(kind, [])
@@ -343,7 +353,44 @@ class TootrisGame(arcade.View):
 
     def on_mouse_release(self, x, y, button, key_modifiers):
         pass
+    def _check_game_over(self):
+        if self.inactive_pieces:
+            for c, r in self.inactive_pieces:
+                if r == 0 or r == 1:
+                    return True
+        return False
 
+class TootrisGameOver(arcade.View):
+    """
+    Game Over view to display when the game ends.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.background_color = arcade.color.BLACK
+        self.final_score = TootrisGame().score
+
+    def on_draw(self):
+        self.clear()
+        game_over_text = "Game Over"
+        score_text = f"Final Score: {self.final_score}"
+
+        arcade.draw_text(
+            game_over_text,
+            WINDOW_WIDTH / 2,
+            WINDOW_HEIGHT / 2 + 50,
+            arcade.color.WHITE,
+            font_size=50,
+            anchor_x="center",
+        )
+        arcade.draw_text(
+            score_text,
+            WINDOW_WIDTH / 2,
+            WINDOW_HEIGHT / 2 - 50,
+            arcade.color.WHITE,
+            font_size=30,
+            anchor_x="center",
+        )
 
 def main():
     # Create the main window and start the game
@@ -351,7 +398,10 @@ def main():
     game = TootrisGame()
     window.show_view(game)
     arcade.run()
-
+def game_over():
+    window = arcade.get_window()
+    game_over_view = TootrisGameOver()
+    window.show_view(game_over_view)
 
 if __name__ == "__main__":
     # run the main function to start the game
