@@ -27,6 +27,7 @@ block_presets = {
     "S": [(1, 0), (2, 0), (0, 1), (1, 1)],
 }
 
+
 class TootrisGame(arcade.View):
     """
     Main game view containing the game rendering, controls and block movements.
@@ -49,6 +50,8 @@ class TootrisGame(arcade.View):
         # Setup time tracking.
         self.second_counter = 0
         self._second_acc = 0.0
+
+        self.score = 0
 
     def setup_grid_pos(self):
         self.grid_pos = []
@@ -164,7 +167,18 @@ class TootrisGame(arcade.View):
         if self.inactive_pieces:
             for col, row in self.inactive_pieces:
                 draw_cell(col, row, arcade.color.BLUE)
-
+    def draw_score(self):
+        """
+        Draw the current score on the screen.
+        """
+        score_text = f"Score: {self.score}"
+        arcade.draw_text(
+            score_text,
+            10,
+            WINDOW_HEIGHT - 30,
+            arcade.color.WHITE,
+            16
+        )
     def reset(self):
         pass
 
@@ -173,6 +187,7 @@ class TootrisGame(arcade.View):
         self.clear()
         self.draw_grid()
         self.draw_square()
+        self.draw_score()
 
     def on_update(self, delta_time):
         # Update time tracking and move piece down every second, not if manually moved down.

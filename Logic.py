@@ -37,5 +37,25 @@ def check_full_rows(block_positions, rows, columns):
         # Count how many full rows are below this block (higher y index)
         rows_below = sum(1 for full_row in full_rows if full_row > y)
         block_positions_adjusted.append((x, y + rows_below))
-
+    SetScore(full_rows)
     return block_positions_adjusted
+
+
+def SetScore(lines_cleared):
+    import Game
+    score = Game.TootrisGame().score
+    """
+    Calculate the score based on the number of lines cleared.
+
+    Args:
+        score: int - current score.
+        lines_cleared: int - number of lines cleared in the last move.
+
+    Returns:
+        int - updated score.
+    """
+    scoring = {1: 100, 2: 300, 3: 600, 4: 1000}
+    if lines_cleared in scoring:
+        score += scoring[lines_cleared]
+
+    Game.TootrisGame().score = score
