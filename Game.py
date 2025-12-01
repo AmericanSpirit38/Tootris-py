@@ -28,6 +28,7 @@ block_presets = {
     "S": [(1, 0), (2, 0), (0, 1), (1, 1)],
 }
 
+score = 0
 
 class TootrisGame(arcade.View):
     """
@@ -202,7 +203,7 @@ class TootrisGame(arcade.View):
             if self._check_game_over():
                 self.game_over = True
                 print("Game Over!")
-                game_over()
+                game_over(self.score)
                 return
         # Update time tracking and move piece down every second, not if manually moved down.
         self._second_acc += delta_time
@@ -357,6 +358,7 @@ class TootrisGame(arcade.View):
         if self.inactive_pieces:
             for c, r in self.inactive_pieces:
                 if r == 0 or r == 1:
+                    score = self.score
                     return True
         return False
 
@@ -365,16 +367,38 @@ class TootrisGameOver(arcade.View):
     Game Over view to display when the game ends.
     """
 
-    def __init__(self):
+    def __init__(self, final_score):
         super().__init__()
+        self.final_score = final_score
         self.background_color = arcade.color.BLACK
-        self.final_score = TootrisGame().score
+        print(self.final_score)
+        if self.final_score is None:
+            score_text = "Final Score: 0"
+        try:
+            with open('score.json', 'r+') as f:
+                content = f.read().strip()
+                try:
+                    current = int(content) if content else 0
+                except ValueError:
+                    current = 0
+                final = int(self.final_score or 0)
+                if final > current:
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(final))
+                    self.high_score = final
+                else:
+                    self.high_score = current
+        except FileNotFoundError:
+            final = int(self.final_score or 0)
+            with open('score.json', 'w') as f:
+                f.write(str(final))
+            self.high_score = final
 
     def on_draw(self):
         self.clear()
         game_over_text = "Game Over"
         score_text = f"Final Score: {self.final_score}"
-
         arcade.draw_text(
             game_over_text,
             WINDOW_WIDTH / 2,
@@ -398,9 +422,9 @@ def main():
     game = TootrisGame()
     window.show_view(game)
     arcade.run()
-def game_over():
+def game_over(final_score):
     window = arcade.get_window()
-    game_over_view = TootrisGameOver()
+    game_over_view = TootrisGameOver(final_score)
     window.show_view(game_over_view)
 
 if __name__ == "__main__":
