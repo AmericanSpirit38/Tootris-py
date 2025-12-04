@@ -10,6 +10,31 @@ WINDOW_WIDTH = 650
 WINDOW_HEIGHT = 900
 WINDOW_TITLE = "Tootris"
 
+class StartScreen(arcade.View):
+    """
+    Start screen view for the game.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.background_color = arcade.color.BLACK
+        self.title_pos = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50)
+        self.instruction_pos = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 50)
+    def on_draw(self) -> bool | None:
+        self.clear()
+        batch = Batch()
+        title_text = "Tootris"
+        instruction_text = "Press P to Play"
+        text_1 = arcade.Text(title_text, self.title_pos[0], self.title_pos[1],
+                             arcade.color.WHITE, font_size=50, anchor_x="center", batch=batch)
+        text_2 = arcade.Text(instruction_text, self.instruction_pos[0], self.instruction_pos[1],
+                             arcade.color.WHITE, font_size=30, anchor_x="center", batch=batch)
+        batch.draw()
+        text_1.batch = None
+        text_2.batch = None
+    def on_key_press(self, symbol: int, modifiers: int) -> bool | None:
+        if symbol == arcade.key.P:
+            main()
 # Grid dimensions and layout
 grid = {
     "rows": 20,
@@ -58,7 +83,9 @@ class TootrisGame(arcade.View):
         self.score_top_left_pos = (WINDOW_WIDTH - 620, WINDOW_HEIGHT - 40)
 
         self.game_over = False
-        self.game_started = False
+        self.game_started = True
+
+        self.spawn()
 
 
     def setup_grid_pos(self):
@@ -415,10 +442,14 @@ class TootrisGameOver(arcade.View):
             font_size=30,
             anchor_x="center",
         )
-
+def start():
+    window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
+    start_view = StartScreen()
+    window.show_view(start_view)
+    arcade.run()
 def main():
     # Create the main window and start the game
-    window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
+    window = arcade.get_window()
     game = TootrisGame()
     window.show_view(game)
     arcade.run()
@@ -428,5 +459,4 @@ def game_over(final_score):
     window.show_view(game_over_view)
 
 if __name__ == "__main__":
-    # run the main function to start the game
-    main()
+    start()
