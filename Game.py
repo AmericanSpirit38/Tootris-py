@@ -53,6 +53,18 @@ block_presets = {
     "S": [(1, 0), (2, 0), (0, 1), (1, 1)],
 }
 
+block_rotations = {
+    "I": [ [(0,0), (-1,0), (-2,0), (1,0)],
+           [(0,0), (0,-1), (0,-2), (0,1)] ],
+    "O": [ [(0,0), (1,0), (0,1), (1,1)] ],
+    "T": [ [(0,0), (1,0), (2,0), (1,1)],
+           [(1,0), (1,1), (1,2), (0,1)],
+           [(0,1), (1,1), (2,1), (1,0)],
+           [(1,0), (1,1), (1,2), (2,1)] ],
+    "S": [ [(1,0), (2,0), (0,1), (1,1)],
+           [(0,0), (0,1), (1,1), (1,2)] ],
+}
+
 score = 0
 
 class TootrisGame(arcade.View):
@@ -77,6 +89,8 @@ class TootrisGame(arcade.View):
         # Setup time tracking.
         self.second_counter = 0
         self._second_acc = 0.0
+
+        self.current_piece_shape = None
 
         self.score = 0
 
@@ -252,7 +266,7 @@ class TootrisGame(arcade.View):
             self._second_acc = 0
         # Handle input to rotate piece Left (not implemented)
         if key == arcade.key.Q:
-            print("Rotate Left")
+            self.rotate_left()
         # Handle input to rotate piece Right (not implemented)
         elif key == arcade.key.E:
             print("Rotate Right")
@@ -263,35 +277,125 @@ class TootrisGame(arcade.View):
         # Handle input to hard drop piece
         elif key == arcade.key.SPACE:
             self.drop()
+
+    # Python
+    # In `Game.py`, replace these methods:
+
     def spawn(self, kind=None):
         """
-        Spawn a multi-cell piece from block_presets at the top, centered horizontally.
+        Spawn a multi-cell piece using `block_rotations` at the top, centered horizontally.
+        Tracks rotation index and pivot at offset (0,0).
         """
         if self.game_over:
             return
         if kind is None:
             kind = random.choice(list(block_presets.keys()))
-        offsets = block_presets.get(kind, [])
-        if not offsets:
+
+        self.current_piece_shape = kind
+        rotations = block_rotations.get(kind, [])
+        if not rotations:
             self.active_piece_grid_pos = []
+            self.current_rotation_index = None
+            self.rotation_origin = None
             return
 
-        # Compute horizontal span to center piece
+
+        # Start with first rotation
+        idx = 0
+        offsets = rotations[idx]
+
+        # Center horizontally based on offsets span
         min_dx = min(dx for dx, dy in offsets)
         max_dx = max(dx for dx, dy in offsets)
         span = max_dx - min_dx + 1
         start_col = (grid["columns"] - span) // 2 - min_dx
-        start_row = 0  # top row
+        start_row = 0
 
-        # Translate offsets to absolute grid positions
-        cells = [[start_col + dx, start_row + dy] for dx, dy in offsets]
+        # The pivot is the cell corresponding to offset (0,0)
+        pivot_col = start_col
+        pivot_row = start_row
 
-        # If any cell is occupied at spawn, do not spawn (game over condition placeholder)
-        if any((c, r) in self.inactive_pieces or c < 0 or c >= grid["columns"] or r < 0 or r >= grid["rows"] for c, r in cells):
+        cells = [[pivot_col + dx, pivot_row + dy] for dx, dy in offsets]
+
+        # Validate spawn
+        if any(
+                c < 0 or c >= grid["columns"] or r < 0 or r >= grid["rows"] or (c, r) in self.inactive_pieces
+                for c, r in cells
+        ):
             self.active_piece_grid_pos = []
+            self.current_rotation_index = None
+            self.rotation_origin = None
             return
 
         self.active_piece_grid_pos = cells
+        self.current_rotation_index = idx
+        self.rotation_origin = (pivot_col, pivot_row)
+
+    def _apply_move(self, dcol, drow):
+        """
+        Apply movement vector to all active cells and move the rotation pivot.
+        """
+        self.active_piece_grid_pos = [[c + dcol, r + drow] for c, r in self.active_piece_grid_pos]
+        if getattr(self, "rotation_origin", None) is not None:
+            oc, orow = self.rotation_origin
+            self.rotation_origin = (oc + dcol, orow + drow)
+
+    def rotate_left(self):
+        """
+        Rotate the active piece left using `block_rotations` and a tracked pivot.
+        Applies simple wall-kicks if needed.
+        """
+        rotations = block_rotations.get(self.current_piece_shape, [])
+        if not rotations or not self.active_piece_grid_pos:
+            return
+
+        # Require a tracked index and pivot; if missing, try to initialize
+        if getattr(self, "current_rotation_index", None) is None or getattr(self, "rotation_origin", None) is None:
+            # Fallback: assume current is index 0 and infer pivot as the cell closest to the origin by matching (0,0)
+            # Find a cell that could be the pivot by checking which cell minus offsets matches the set
+            current_set = {tuple(p) for p in self.active_piece_grid_pos}
+            inferred_idx = None
+            inferred_pivot = None
+            for idx, pattern in enumerate(rotations):
+                for oc, orow in self.active_piece_grid_pos:
+                    mapped = {(oc + dx, orow + dy) for dx, dy in pattern}
+                    if mapped == current_set:
+                        inferred_idx = idx
+                        inferred_pivot = (oc, orow)
+                        break
+                if inferred_idx is not None:
+                    break
+            if inferred_idx is None:
+                # As last resort, treat first cell as pivot and index 0
+                inferred_idx = 0
+                oc, orow = self.active_piece_grid_pos[0]
+                inferred_pivot = (oc, orow)
+
+            self.current_rotation_index = inferred_idx
+            self.rotation_origin = inferred_pivot
+
+        cur_idx = self.current_rotation_index
+        pivot_col, pivot_row = self.rotation_origin
+
+        next_idx = (cur_idx - 1) % len(rotations)
+        new_offsets = rotations[next_idx]
+
+        # Try kicks: no kick, left, right, up, down, extend left/right
+        kicks = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-2, 0), (2, 0)]
+        for kx, ky in kicks:
+            new_positions = [[pivot_col + dx + kx, pivot_row + dy + ky] for dx, dy in new_offsets]
+            # Validate
+            if all(
+                    0 <= c < grid["columns"] and 0 <= r < grid["rows"] and (c, r) not in self.inactive_pieces
+                    for c, r in new_positions
+            ):
+                self.active_piece_grid_pos = new_positions
+                self.current_rotation_index = next_idx
+                # Update pivot with applied kick
+                self.rotation_origin = (pivot_col + kx, pivot_row + ky)
+                print("Rotated Left to:", self.active_piece_grid_pos)
+                return
+        # No valid rotation found; do nothing.
 
     def _can_move(self, dcol, drow):
         """
@@ -307,13 +411,6 @@ class TootrisGame(arcade.View):
             if (ncol, nrow) in self.inactive_pieces:
                 return False
         return True
-
-    def _apply_move(self, dcol, drow):
-        """
-        Apply movement vector to all active cells.
-        """
-        self.active_piece_grid_pos = [[c + dcol, r + drow] for c, r in self.active_piece_grid_pos]
-
 
     def move_right(self):
         # Move active piece right if possible
@@ -372,6 +469,7 @@ class TootrisGame(arcade.View):
         # Spawn next piece
         self.active_piece_grid_pos = []
         self.spawn()
+
 
     def on_mouse_motion(self, x, y, dx, dy):
         pass
