@@ -269,7 +269,7 @@ class TootrisGame(arcade.View):
             self.rotate_left()
         # Handle input to rotate piece Right (not implemented)
         elif key == arcade.key.E:
-            print("Rotate Right")
+            self.rotate_right()
         # Start the game on P key press
         elif key == arcade.key.P:
             self.game_started = True
@@ -396,6 +396,60 @@ class TootrisGame(arcade.View):
                 print("Rotated Left to:", self.active_piece_grid_pos)
                 return
         # No valid rotation found; do nothing.
+    def rotate_right(self):
+        """
+        Rotate the active piece right using `block_rotations` and a tracked pivot.
+        Applies simple wall-kicks if needed.
+        """
+        rotations = block_rotations.get(self.current_piece_shape, [])
+        if not rotations or not self.active_piece_grid_pos:
+            return
+
+        # Require a tracked index and pivot, if missing, try to initialize
+        if getattr(self, "current_rotation_index", None) is None or getattr(self, "rotation_origin", None) is None:
+            # Fallback: assume current is index 0 and infer pivot as the cell closest to the origin by matching (0,0)
+            # Find a cell that could be the pivot by checking which cell minus offsets matches the set
+            current_set = {tuple(p) for p in self.active_piece_grid_pos}
+            inferred_idx = None
+            inferred_pivot = None
+            for idx, pattern in enumerate(rotations):
+                for oc, orow in self.active_piece_grid_pos:
+                    mapped = {(oc + dx, orow + dy) for dx, dy in pattern}
+                    if mapped == current_set:
+                        inferred_idx = idx
+                        inferred_pivot = (oc, orow)
+                        break
+                if inferred_idx is not None:
+                    break
+            if inferred_idx is None:
+                # As last resort, treat first cell as pivot and index 0
+                inferred_idx = 0
+                oc, orow = self.active_piece_grid_pos[0]
+                inferred_pivot = (oc, orow)
+
+            self.current_rotation_index = inferred_idx
+            self.rotation_origin = inferred_pivot
+        cur_idx = self.current_rotation_index
+        pivot_col, pivot_row = self.rotation_origin
+        next_idx = (cur_idx + 1) % len(rotations)
+        new_offsets = rotations[next_idx]
+        # Try kicks: no kick, left, right, up, down, extend left/right
+        kicks = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-2, 0), (2, 0)]
+        for kx, ky in kicks:
+            new_positions = [[pivot_col + dx + kx, pivot_row + dy + ky] for dx, dy in new_offsets]
+            # Validate
+            if all(
+                    0 <= c < grid["columns"] and 0 <= r < grid["rows"] and (c, r) not in self.inactive_pieces
+                    for c, r in new_positions
+            ):
+                self.active_piece_grid_pos = new_positions
+                self.current_rotation_index = next_idx
+                # Update pivot with applied kick
+                self.rotation_origin = (pivot_col + kx, pivot_row + ky)
+                print("Rotated Right to:", self.active_piece_grid_pos)
+                return
+        # No valid rotation found; do nothing.
+
 
     def _can_move(self, dcol, drow):
         """
