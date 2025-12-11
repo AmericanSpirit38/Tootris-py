@@ -578,22 +578,19 @@ class TootrisGameOver(arcade.View):
         self.clear()
         game_over_text = "Game Over"
         score_text = f"Final Score: {self.final_score}"
-        arcade.draw_text(
-            game_over_text,
-            WINDOW_WIDTH / 2,
-            WINDOW_HEIGHT / 2 + 50,
-            arcade.color.WHITE,
-            font_size=50,
-            anchor_x="center",
-        )
-        arcade.draw_text(
-            score_text,
-            WINDOW_WIDTH / 2,
-            WINDOW_HEIGHT / 2 - 50,
-            arcade.color.WHITE,
-            font_size=30,
-            anchor_x="center",
-        )
+        batch = Batch()
+
+        text_1 = arcade.Text(game_over_text, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 50,
+                             arcade.color.WHITE, font_size=50, anchor_x="center", batch=batch)
+        text_2 = arcade.Text(score_text, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2,
+                             arcade.color.WHITE, font_size=30, anchor_x="center", batch=batch)
+        high_score_text = f"High Score: {self.high_score}"
+        text_3 = arcade.Text(high_score_text, WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 50,
+                             arcade.color.WHITE, font_size=30, anchor_x="center", batch=batch)
+        batch.draw()
+        text_1.batch = None
+        text_2.batch = None
+        text_3.batch = None
 def start():
     window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE)
     start_view = StartScreen()
